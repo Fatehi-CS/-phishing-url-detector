@@ -10,7 +10,6 @@ API_KEY = os.environ.get("VIRUSTOTAL_API_KEY")
 def analyze_url(url):
     warnings = []
     
-    # Local Rule-Based Heuristics
     if url.startswith("http://"):
         warnings.append("Uses unencrypted HTTP protocol instead of HTTPS.")
     if "@" in url:
@@ -20,7 +19,6 @@ def analyze_url(url):
     if len(url) > 75:
         warnings.append("URL length is unusually long.")
 
-    # VirusTotal API Global Check
     if not API_KEY:
         return "unknown", "Configuration Error: API Key is missing.", warnings
 
@@ -28,7 +26,8 @@ def analyze_url(url):
     headers = {"x-apikey": API_KEY}
     
     try:
-        response = requests.get(f"https://virustotal.com{url_id}", headers=headers)
+        base_vt = "https://virustotal.com/api/v3/urls/"
+        response = requests.get(base_vt + url_id, headers=headers, timeout=8)
         
         if response.status_code == 200:
             stats = response.json()["data"]["attributes"]["last_analysis_stats"]
@@ -43,7 +42,7 @@ def analyze_url(url):
         elif response.status_code == 404:
             return "unknown", "UNKNOWN: URL not found in database yet. Proceed with caution.", warnings
         else:
-            return "unknown", "Scan failed temporarily. Please try again later.", warnings
+            return "unknown", f"Scan failed temporarily (Status: {response.status_code}). Please try again later.", warnings
             
     except Exception:
         return "unknown", "Connection error while contacting the security server.", warnings
@@ -54,6 +53,8 @@ def home():
     if request.method == "POST":
         user_url = request.form.get("url", "").strip()
         if user_url:
+            if not user_url.startswith(("http://", "https://")):
+                user_url = "http://" + user_url
             status, message, warnings = analyze_url(user_url)
             result = {
                 "status": status,
