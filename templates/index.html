@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>الدرع الرقمي | Digital Shield — Fatehi Abdulfattah Mohammed Ali Al-Shami</title>
+    <title>Digital Shield — Fatehi Abdulfattah Mohammed Ali Al-Shami</title>
     <style>
         :root {
             --bg: #f8fafc;
@@ -62,7 +61,7 @@
     <div class="container">
         <div class="welcome-card">
             <span class="shield-icon">🛡️</span>
-            <div class="project-brand">الدرع الرقمي | Digital Shield</div>
+            <div class="project-brand">Digital Shield</div>
             <div class="sub-welcome">Engineered & Developed by</div>
             <h1>Fatehi Abdulfattah Mohammed Ali Al-Shami</h1>
             <div class="tagline">Phishing Link Detection & AI Scam Message Analysis</div>
@@ -70,8 +69,8 @@
         </div>
 
         <div class="tabs">
-            <button type="button" class="tab-btn {% if active_tab == 'url' %}active{% endif %}" onclick="switchTab('url')">🔗 Scan Suspicious URL</button>
-            <button type="button" class="tab-btn {% if active_tab == 'message' %}active{% endif %}" onclick="switchTab('message')">🤖 AI Message Analyzer</button>
+            <button type="button" id="btn-url" class="tab-btn {% if active_tab == 'url' %}active{% endif %}" onclick="switchTab('url')">🔗 Scan Suspicious URL</button>
+            <button type="button" id="btn-message" class="tab-btn {% if active_tab == 'message' %}active{% endif %}" onclick="switchTab('message')">🤖 AI Message Analyzer</button>
         </div>
 
         <div class="card">
@@ -92,12 +91,12 @@
             </div>
 
             {% if error %}
-                <div class="error">⚠️ {{ error }}</div>
+                <div id="error-box" class="error">⚠️ {{ error }}</div>
             {% endif %}
         </div>
 
         {% if url_result %}
-        <div class="result">
+        <div id="result-url" class="result">
             {% if url_result.is_danger %}
                 <div class="status-danger">⚠️ Warning: Potential Phishing or Suspicious URL!</div>
             {% else %}
@@ -114,23 +113,34 @@
         {% endif %}
 
         {% if ai_analysis %}
-        <div class="result">
+        <div id="result-message" class="result">
             <h3 style="color: var(--primary-dark); margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">🛡️ Digital Shield — AI Cybersecurity Report</h3>
             <div class="ai-text">{{ ai_analysis }}</div>
         </div>
         {% endif %}
 
         <div class="footer">
-            Engineered by Fatehi Al-Shami | الدرع الرقمي (The Digital Shield Initiative)
+            Engineered by Fatehi Al-Shami | The Digital Shield Initiative
         </div>
     </div>
 
     <script>
         function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            event.target.classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.panel').forEach(function(p) {
+                p.classList.remove('active');
+            });
+            document.getElementById('btn-' + tab).classList.add('active');
             document.getElementById('panel-' + tab).classList.add('active');
+
+            var resUrl = document.getElementById('result-url');
+            var resMsg = document.getElementById('result-message');
+            var errBox = document.getElementById('error-box');
+            if (resUrl) resUrl.style.display = 'none';
+            if (resMsg) resMsg.style.display = 'none';
+            if (errBox) errBox.style.display = 'none';
         }
     </script>
 </body>
