@@ -1,75 +1,104 @@
+from flask import Flask, render_template, request
+import requests
 import os
 import base64
-import requests
-from flask import Flask, render_template, request
+import re
 
 app = Flask(__name__)
 
-API_KEY = os.environ.get("VIRUSTOTAL_API_KEY")
+VIRUSTOTAL_API_KEY = os.environ.get("VIRUSTOTAL_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
-def analyze_url(url):
-    warnings = []
-    
-    if url.startswith("http://"):
-        warnings.append("Uses unencrypted HTTP protocol instead of HTTPS.")
-    if "@" in url:
-        warnings.append("Contains '@' symbol, often used to obscure the true destination.")
-    if url.count("-") > 3:
-        warnings.append("Domain contains multiple hyphens, a common phishing pattern.")
+def heuristic_url_check(url):
+    reasons = []
+    score = 0
+    if not url.startswith("https://"):
+        reasons.append("Uses unencrypted HTTP protocol instead of HTTPS.")
+        score += 30
     if len(url) > 75:
-        warnings.append("URL length is unusually long.")
-
-    if not API_KEY:
-        return "unknown", "Configuration Error: API Key is missing.", warnings
-
-    url_id = base64.urlsafe_b64encode(url.encode()).decode().strip("=")
-    headers = {
-        "x-apikey": API_KEY,
-        "User-Agent": "PhishingDetectorApp/1.0"
-    }
-
-    try:
-        base_vt = "https://virustotal.com"
-        response = requests.get(base_vt + url_id, headers=headers, timeout=5)
-        
-        if response.status_code == 200:
-            stats = response.json()["data"]["attributes"]["last_analysis_stats"]
-            malicious = stats.get("malicious", 0)
-            suspicious = stats.get("suspicious", 0)
-            
-            if malicious > 0 or suspicious > 0:
-                total_flags = malicious + suspicious
-                return "danger", f"DANGER! Flagged as malicious or suspicious by {total_flags} security vendors.", warnings
-            else:
-                return "safe", "SAFE: No malicious activity detected across global databases.", warnings
-        elif response.status_code == 404:
-            if len(warnings) >= 2:
-                return "danger", "SUSPICIOUS: URL not in database and shows multiple phishing indicators.", warnings
-            return "unknown", "NOTICE: URL not found in database yet. Proceed with caution.", warnings
-        else:
-            return "unknown", f"Scan notice (Status: {response.status_code}). Relying on heuristic check.", warnings
-            
-    except Exception:
-        if len(warnings) > 0:
-            return "danger", "HEURISTIC ALERT: Potential phishing indicators detected locally.", warnings
-        return "safe", "HEURISTIC CHECK PASSED: No obvious phishing patterns detected.", warnings
+        reasons.append("Excessive URL length (often used to hide malicious redirects).")
+        score += 20
+    if "@" in url or "-" in url.split("//")[-1].split("/"):
+        reasons.append("Suspicious characters (@ or hyphens) in domain structure.")
+        score += 25
+    if re.search(r"\d+\.\d+\.\d+\.\d+", url):
+        reasons.append("Uses raw IP address instead of a standard domain name.")
+        score += 35
+    return score, reasons
 
 @app.route("/", methods=["GET", "POST"])
-def home():
-    result = None
+def index():
+    active_tab = "url"
+    url_result = None
+    ai_analysis = None
+    error = None
+    input_url = ""
+    input_message = ""
+
     if request.method == "POST":
-        user_url = request.form.get("url", "").strip()
-        if user_url:
-            if not user_url.startswith(("http://", "https://")):
-                user_url = "http://" + user_url
-            status, message, warnings = analyze_url(user_url)
-            result = {
-                "status": status,
-                "message": message,
-                "warnings": warnings,
-                "url": user_url
-            }
-    return render_template("index.html", result=result)
+        scan_type = request.form.get("scan_type", "url")
+        active_tab = scan_type
+
+        if scan_type == "url":
+            input_url = request.form.get("url", "").strip()
+            if not input_url:
+                error = "Please enter a valid URL to scan."
+            else:
+                if not input_url.startswith(("http://", "https://")):
+                    input_url = "http://" + input_url
+                
+                h_score, h_reasons = heuristic_url_check(input_url)
+                vt_malicious = 0
+                vt_status = "Heuristic Check Only"
+
+                if VIRUSTOTAL_API_KEY:
+                    try:
+                        url_id = base64.urlsafe_b64encode(input_url.encode()).decode().strip("=")
+                        headers = {"x-apikey": VIRUSTOTAL_API_KEY}
+                        vt_res = requests.get(f"https://virustotal.com{url_id}", headers=headers, timeout=8)
+                        if vt_res.status_code == 200:
+                            stats = vt_res.json()["data"]["attributes"]["last_analysis_stats"]
+                            vt_malicious = stats.get("malicious", 0) + stats.get("suspicious", 0)
+                            vt_status = f"VirusTotal Flagged: {vt_malicious} security vendors"
+                    except Exception:
+                        vt_status = "VirusTotal fallback active (Heuristic used)"
+
+                is_danger = (vt_malicious > 0) or (h_score >= 40)
+                url_result = {
+                    "url": input_url,
+                    "is_danger": is_danger,
+                    "vt_status": vt_status,
+                    "reasons": h_reasons if h_reasons else ["No obvious structural anomalies detected."]
+                }
+
+        elif scan_type == "message":
+            input_message = request.form.get("message", "").strip()
+            if not input_message:
+                error = "Please paste a suspicious email, WhatsApp, or SMS text."
+            elif not GEMINI_API_KEY:
+                error = "GEMINI_API_KEY is not configured in server environment variables."
+            else:
+                try:
+                    api_url = f"https://googleapis.com{GEMINI_API_KEY}"
+                    prompt = (
+                        "You are an expert Cybersecurity & Phishing Analyst. Analyze the following message/email for scam, phishing, or social engineering tactics. "
+                        "Reply in the SAME language as the message (Arabic or English). Structure your report clearly:\n"
+                        "1. Verdict (Safe / Suspicious / High-Risk Phishing)\n"
+                        "2. Risk Level (0% - 100%)\n"
+                        "3. Detected Red Flags\n"
+                        "4. Security Advice\n\n"
+                        f"Message:\n{input_message}"
+                    )
+                    res = requests.post(api_url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=15)
+                    data = res.json()
+                    if "candidates" in data and len(data["candidates"]) > 0:
+                        ai_analysis = data["candidates"]["content"]["parts"]["text"]
+                    else:
+                        error = "AI engine could not process the request right now."
+                except Exception:
+                    error = "Network error while connecting to AI engine."
+
+    return render_template("index.html", active_tab=active_tab, url_result=url_result, ai_analysis=ai_analysis, error=error, input_url=input_url, input_message=input_message)
 
 if __name__ == "__main__":
     app.run(debug=True)
