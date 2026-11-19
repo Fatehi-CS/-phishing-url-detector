@@ -7,7 +7,7 @@ import re
 app = Flask(__name__)
 
 VIRUSTOTAL_API_KEY = os.environ.get("VIRUSTOTAL_API_KEY")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 
 def heuristic_url_check(url):
     reasons = []
@@ -18,7 +18,8 @@ def heuristic_url_check(url):
     if len(url) > 75:
         reasons.append("Excessive URL length (often used to hide malicious redirects).")
         score += 20
-    if "@" in url or "-" in url.split("//")[-1].split("/"):
+    domain_part = url.split("//")[-1].split("/")[0]
+    if "@" in url or "-" in domain_part:
         reasons.append("Suspicious characters (@ or hyphens) in domain structure.")
         score += 25
     if re.search(r"\d+\.\d+\.\d+\.\d+", url):
@@ -55,7 +56,8 @@ def index():
                     try:
                         url_id = base64.urlsafe_b64encode(input_url.encode()).decode().strip("=")
                         headers = {"x-apikey": VIRUSTOTAL_API_KEY}
-                        vt_res = requests.get(f"https://virustotal.com{url_id}", headers=headers, timeout=8)
+                        vt_endpoint = "https://virustotal.com" + "/api/v3/urls/" + url_id
+                        vt_res = requests.get(vt_endpoint, headers=headers, timeout=8)
                         if vt_res.status_code == 200:
                             stats = vt_res.json()["data"]["attributes"]["last_analysis_stats"]
                             vt_malicious = stats.get("malicious", 0) + stats.get("suspicious", 0)
@@ -75,13 +77,19 @@ def index():
             input_message = request.form.get("message", "").strip()
             if not input_message:
                 error = "Please paste a suspicious email, WhatsApp, or SMS text."
-            elif not GEMINI_API_KEY:
-                error = "GEMINI_API_KEY is not configured in server environment variables."
+            elif not OPENROUTER_API_KEY:
+                error = "OPENROUTER_API_KEY is not configured in server environment variables."
             else:
                 try:
-                    api_url = f"https://googleapis.com{GEMINI_API_KEY}"
+                    api_url = "https://openrouter.ai" + "/api/v1/chat/completions"
+                    headers = {
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json",
+                        "HTTP-Referer": "https://vercel.app",
+                        "X-Title": "Digital Shield"
+                    }
                     prompt = (
-                        "You are an expert Cybersecurity & Phishing Analyst. Analyze the following message/email for scam, phishing, or social engineering tactics. "
+                        "You are an expert Cybersecurity & Phishing Analyst for 'Digital Shield'. Analyze the following message/email for scam, phishing, or social engineering tactics. "
                         "Reply in the SAME language as the message (Arabic or English). Structure your report clearly:\n"
                         "1. Verdict (Safe / Suspicious / High-Risk Phishing)\n"
                         "2. Risk Level (0% - 100%)\n"
@@ -89,12 +97,17 @@ def index():
                         "4. Security Advice\n\n"
                         f"Message:\n{input_message}"
                     )
-                    res = requests.post(api_url, json={"contents": [{"parts": [{"text": prompt}]}]}, timeout=15)
+                    payload = {
+                        "model": "openrouter/free",
+                        "messages": [{"role": "user", "content": prompt}]
+                    }
+                    res = requests.post(api_url, headers=headers, json=payload, timeout=20)
                     data = res.json()
-                    if "candidates" in data and len(data["candidates"]) > 0:
-                        ai_analysis = data["candidates"]["content"]["parts"]["text"]
+                    if "choices" in data and len(data["choices"]) > 0:
+                        ai_analysis = data["choices"][0]["message"]["content"]
                     else:
-                        error = "AI engine could not process the request right now."
+                        err_msg = data.get("error", {}).get("message", "Unknown API response")
+                        error = f"AI engine error: {err_msg}"
                 except Exception:
                     error = "Network error while connecting to AI engine."
 
