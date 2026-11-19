@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phishing & AI Threat Detector | Fatehi Abdulfattah Mohammed Ali Al-Shami</title>
+    <title>الدرع الرقمي | Digital Shield — Fatehi Abdulfattah Mohammed Ali Al-Shami</title>
     <style>
         :root {
             --bg: #f8fafc;
@@ -28,8 +29,9 @@
             box-shadow: 0 8px 20px rgba(2, 132, 199, 0.2);
         }
         .welcome-card .shield-icon { font-size: 2.2rem; margin-bottom: 8px; display: block; }
-        .welcome-card .sub-welcome { font-size: 0.95rem; opacity: 0.9; font-weight: 500; }
-        .welcome-card h1 { font-size: 1.45rem; margin: 6px 0; font-weight: 700; letter-spacing: 0.3px; }
+        .welcome-card .project-brand { font-size: 1.55rem; font-weight: 800; letter-spacing: 0.4px; margin-bottom: 4px; }
+        .welcome-card .sub-welcome { font-size: 0.9rem; opacity: 0.9; font-weight: 500; margin-top: 6px; }
+        .welcome-card h1 { font-size: 1.25rem; margin: 4px 0; font-weight: 700; letter-spacing: 0.3px; }
         .welcome-card .tagline { font-size: 0.9rem; opacity: 0.92; margin-top: 6px; }
         .tech-pill { display: inline-block; margin-top: 12px; background: rgba(255, 255, 255, 0.18); padding: 4px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
 
@@ -52,7 +54,7 @@
         .result { background: var(--card); padding: 22px; border-radius: 14px; border: 1px solid var(--border); margin-top: 20px; }
         .status-danger { color: #dc2626; font-weight: bold; font-size: 1.15rem; margin-bottom: 10px; }
         .status-safe { color: #16a34a; font-weight: bold; font-size: 1.15rem; margin-bottom: 10px; }
-        .ai-text { white-space: pre-wrap; color: #1e293b; font-size: 0.96rem; dir: auto; }
+        .ai-text { white-space: pre-wrap; color: #1e293b; font-size: 0.96rem; direction: auto; }
         .footer { text-align: center; margin-top: 30px; color: var(--muted); font-size: 0.85rem; }
     </style>
 </head>
@@ -60,10 +62,11 @@
     <div class="container">
         <div class="welcome-card">
             <span class="shield-icon">🛡️</span>
-            <div class="sub-welcome">Welcome to the Website of</div>
+            <div class="project-brand">الدرع الرقمي | Digital Shield</div>
+            <div class="sub-welcome">Engineered & Developed by</div>
             <h1>Fatehi Abdulfattah Mohammed Ali Al-Shami</h1>
-            <div class="tagline">for Detecting Phishing Links & AI Scam Message Analysis</div>
-            <div class="tech-pill">Powered by Python, Heuristic Analysis, VirusTotal & Gemini AI</div>
+            <div class="tagline">Phishing Link Detection & AI Scam Message Analysis</div>
+            <div class="tech-pill">Powered by Python, Heuristic Analysis, VirusTotal & OpenRouter AI</div>
         </div>
 
         <div class="tabs">
@@ -112,13 +115,13 @@
 
         {% if ai_analysis %}
         <div class="result">
-            <h3 style="color: var(--primary-dark); margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">🛡️ AI Cybersecurity Analysis Report</h3>
+            <h3 style="color: var(--primary-dark); margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px;">🛡️ Digital Shield — AI Cybersecurity Report</h3>
             <div class="ai-text">{{ ai_analysis }}</div>
         </div>
         {% endif %}
 
         <div class="footer">
-            Engineered by Fatehi Al-Shami | The Digital Shield Initiative
+            Engineered by Fatehi Al-Shami | الدرع الرقمي (The Digital Shield Initiative)
         </div>
     </div>
 
